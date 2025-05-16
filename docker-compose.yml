@@ -1,26 +1,94 @@
 
-x-default-container: &default-container
+x-default: &default
   user: 1000:1000
-  group_add:
-    - "109"
+  # group_add:
+  #   - 109
   environment:
     - PUID=1000
-    - PGID=100
-    - TZ=Africa/Casablanca
+    - PGID=1000
+    - TZ=Australia/Melbourne
   restart: unless-stopped
 
-# containers on the mediarr nework, also have access to specific volumes
-x-mediarr-container: &mediarr-container
-  <<: *default-container
+x-xarr: &xarr
+  <<: *default
   networks:
-    - mediarr
+    - xarr
   volumes:
-    - myMedia:/mnt/media
-    - myDlFolders:/mnt/downloads
+    - my_media:/mnt/media
+    - my_downloads:/mnt/downloads
 
 services:
+
+  qbittorrent:
+    <<: *default
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - WEBUI_PORT=8080
+    volumes:
+      - ./config/qbittorrent:/config
+    ports:
+      - 8080:8080
+      - 6881:6881
+      - 6881:6881/udp
+
+  ### TODO
+  # jackett:
+  #   <<: *default
+  #   image: ???????????????
+  #   container_name: jackett
+
+  radarr:
+    <<: *xarr
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    volumes:
+      - ./config/radarr:/config
+    ports:
+      - 7878:7878
+    depends_on:
+      - qbittorrent
+      # - jackett
+
+  sonarr:
+    <<: *xarr
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    volumes:
+      - ./config/sonarr:/config
+    depends_on:
+      - qbittorrent
+      # - jackett
+    ports:
+      - 8989:8989
+
+  lidarr:
+    <<: *xarr
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    volumes:
+      - ./config/lidarr:/config
+    depends_on:
+      - qbittorrent
+      # - jackett
+    ports:
+      - 8989:8989
+
+  bazarr:
+    <<: *xarr
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    volumes:
+      - ./config/bazarr:/config
+    ports:
+      - 6767:6767
+    depends_on:
+      - radarr
+      - sonarr
+      - lidarr
+
   jellyfin:
-    <<: *default-container
+    <<: *default
     container_name: jellyfin
     image: jellyfin/jellyfin
     environment:
@@ -29,166 +97,27 @@ services:
       - JELLYFIN_DATA_DIR=/var/lib/jellyfin
       - JELLYFIN_LOG_DIR=/var/log/jellyfin
     volumes:
-      - ./configs/jellyfin/etc:/etc/jellyfin
-      - ./configs/jellyfin/var-cache:/var/cache/jellyfin
-      - ./configs/jellyfin/var-lib:/var/lib/jellyfin
-      - ./configs/jellyfin/var-log:/var/log/jellyfin
-      - ./configs/jellyfin/timezone:/etc/timezone
-      - myMedia:/mnt/media
+      - ./config/jellyfin/etc:/etc/jellyfin
+      - ./config/jellyfin/var-cache:/var/cache/jellyfin
+      - ./config/jellyfin/var-lib:/var/lib/jellyfin
+      - ./config/jellyfin/var-log:/var/log/jellyfin
+      - ./config/jellyfin/timezone:/etc/timezone
+      - my_media:/mnt/media
     # network_mode: host
     # devices:
     #   - /dev/dri/renderD128:/dev/dri/renderD128
 
-#   firefox:
-#     <<: *default-container
-#     image: lscr.io/linuxserver/firefox:latest
-#     container_name: firefox
-#     security_opt:
-#       - seccomp:unconfined
-#     environment:
-#       - DRINODE=/dev/dri/renderD128
-#       - DISABLE_IPV6=true
-#       - DOCKER_MODS=linuxserver/mods:firefox-fonts
-#     volumes:
-#       - ./configs/firefox:/config
-#     ports:
-#       - 3001:3001
-#     networks:
-#       - firefox
-#     shm_size: "1gb"
-#     devices:
-#       - /dev/dri/renderD128:/dev/dri/renderD128
-
-#   duplicati:
-#     image: lscr.io/linuxserver/duplicati:latest
-#     container_name: duplicati
-#     volumes:
-#       - ./configs/duplicati/config:/config
-#       - ./configs:/source
-#       - ./docker-compose.yml:/source/docker-compose.yml
-#       - ./configs/duplicati/restore:/restore
-#     networks:
-#       - duplicati
-#     ports:
-
-  bazarr:
-    <<: *mediarr-container
-    image: lscr.io/linuxserver/bazarr:latest
-    container_name: bazarr
-    hostname: bazarr
-    volumes:
-      - ./configs/mediarr/bazarr:/config
-    ports:
-      - 6767:6767
-    depends_on:
-      - sonarr
-      - radarr
-
-#   jellyseerr:
-#     <<: *mediarr-container
-#     image: fallenbagel/jellyseerr:latest
-#     container_name: jellyseerr
-#     hostname: jellyseerr
-#     ports:
-#       - 5055:5055
-#     volumes:
-#       - ./configs/mediarr/jellyseerr:/app/config
-#     depends_on:
-#       - sonarr
-#       - radarr
-#   prowlarr:
-#     <<: *mediarr-container
-#     image: linuxserver/prowlarr:latest
-#     container_name: prowlarr
-#     hostname: prowlarr
-#     volumes:
-#       - ./configs/mediarr/prowlarr:/config
-#     ports:
-#       - 9696:9696
-#     depends_on:
-#       - flaresolverr
-#   flaresolverr:
-#     <<: *mediarr-container
-#     image: ghcr.io/flaresolverr/flaresolverr:latest
-#     container_name: flaresolverr
-#     hostname: flaresolverr
-#     environment:
-#       - LOG_LEVEL=${LOG_LEVEL:-info}
-#       - LOG_HTML=${LOG_HTML:-false}
-#       - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
-#     restart: unless-stopped
-
-  qbittorrent:
-    <<: *mediarr-container
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    hostname: qbittorrent
-    environment:
-      - WEBUI_PORT=8080
-    volumes:
-      - ./configs/mediarr/qbittorrent:/config
-    ports:
-      - 8080:8080
-      - 6881:6881
-      - 6881:6881/udp
-
-  radarr:
-    <<: *mediarr-container
-    image: lscr.io/linuxserver/radarr:latest
-    container_name: radarr
-    hostname: radarr
-    volumes:
-      - ./configs/mediarr/radarr:/config
-    ports:
-      - 7878:7878
-    depends_on:
-      - prowlarr
-      - qbittorrent
-      - jellyfin
-
-#   readarr:
-#     <<: *mediarr-container
-#     image: lscr.io/linuxserver/readarr:develop
-#     container_name: readarr
-#     hostname: readarr
-#     volumes:
-#       - ./mediarr/readarr:/config
-#     ports:
-#       - 8787:8787
-#     depends_on:
-#       - prowlarr
-#       - qbittorrent
-
-  sonarr:
-    <<: *mediarr-container
-    image: lscr.io/linuxserver/sonarr:latest
-    container_name: sonarr
-    hostname: sonarr
-    volumes:
-      - ./configs/mediarr/sonarr:/config
-    depends_on:
-      - prowlarr
-      - qbittorrent
-      - jellyfin
-    ports:
-      - 8989:8989
-
 networks:
-  firefox:
-    driver: bridge
-  duplicati:
-    driver: bridge
-  mediarr:
-    driver: bridge
+  xarr:
 
 volumes:
-  myMedia:
+  my_media:
     driver: local
     driver_opts:
       type: none
       o: bind
       device: /mnt/media
-  myDlFolders:
+  my_downloads:
     driver: local
     driver_opts:
       type: none
