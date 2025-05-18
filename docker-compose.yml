@@ -32,11 +32,17 @@ services:
       - 6881:6881
       - 6881:6881/udp
 
-  ### TODO
-  # jackett:
-  #   <<: *default
-  #   image: ???????????????
-  #   container_name: jackett
+  jackett:
+    <<: *default
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett
+    environment:
+      - AUTO_UPDATE=true #optional
+      - RUN_OPTS= #optional
+    volumes:
+      - /path/to/jackett/data:/config
+    ports:
+      - 9117:9117
 
   radarr:
     <<: *xarr
@@ -122,4 +128,4 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /mnt/HDD/downloads
+      device: /mnt/downloads
