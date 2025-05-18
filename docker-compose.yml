@@ -16,6 +16,9 @@ x-xarr: &xarr
   volumes:
     - my_media:/mnt/media
     - my_downloads:/mnt/downloads
+  depends_on:
+    - qbittorrent
+    - jackett
 
 services:
 
@@ -40,7 +43,7 @@ services:
       - AUTO_UPDATE=true #optional
       - RUN_OPTS= #optional
     volumes:
-      - /path/to/jackett/data:/config
+      - /config/jackett:/config
     ports:
       - 9117:9117
 
@@ -52,9 +55,6 @@ services:
       - ./config/radarr:/config
     ports:
       - 7878:7878
-    depends_on:
-      - qbittorrent
-      # - jackett
 
   sonarr:
     <<: *xarr
@@ -62,9 +62,6 @@ services:
     container_name: sonarr
     volumes:
       - ./config/sonarr:/config
-    depends_on:
-      - qbittorrent
-      # - jackett
     ports:
       - 8989:8989
 
@@ -74,11 +71,8 @@ services:
     container_name: lidarr
     volumes:
       - ./config/lidarr:/config
-    depends_on:
-      - qbittorrent
-      # - jackett
     ports:
-      - 8989:8989
+      - 8686:8686
 
   bazarr:
     <<: *xarr
@@ -95,23 +89,22 @@ services:
 
   jellyfin:
     <<: *default
-    container_name: jellyfin
     image: jellyfin/jellyfin
+    container_name: jellyfin
     environment:
       - JELLYFIN_CACHE_DIR=/var/cache/jellyfin
       - JELLYFIN_CONFIG_DIR=/etc/jellyfin
       - JELLYFIN_DATA_DIR=/var/lib/jellyfin
       - JELLYFIN_LOG_DIR=/var/log/jellyfin
     volumes:
+      - my_media:/mnt/media
       - ./config/jellyfin/etc:/etc/jellyfin
       - ./config/jellyfin/var-cache:/var/cache/jellyfin
       - ./config/jellyfin/var-lib:/var/lib/jellyfin
       - ./config/jellyfin/var-log:/var/log/jellyfin
       - ./config/jellyfin/timezone:/etc/timezone
-      - my_media:/mnt/media
-    # network_mode: host
-    # devices:
-    #   - /dev/dri/renderD128:/dev/dri/renderD128
+    ports:
+      - 8096:8096
 
 networks:
   xarr:
@@ -122,10 +115,12 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /mnt/media
+      # device: /mnt/media/
+      device: ./media/ ### Testing
   my_downloads:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /mnt/downloads
+      # device: /mnt/downloads/
+      device: ./downloads/ ### Testing
