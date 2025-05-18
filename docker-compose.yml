@@ -1,11 +1,9 @@
 
 x-lscr-default: &lscr-default
-  environment:
-    - PUID=1001
-    - PGID=1001
-    - TZ=Australia/Melbourne
-  volumes:
-    - /mnt/downloads:/downloads
+  environment: &lscr-default-env
+    PUID: "1001"
+    PGID: "1001"
+    TZ: Australia/Melbourne
   restart: unless-stopped
 
 x-lscr-xarr: &lscr-xarr
@@ -21,10 +19,12 @@ services:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
     environment:
-      - WEBUI_PORT=8080
-      - TORRENTING_PORT=6881
+      <<: *lscr-default-env
+      WEBUI_PORT: 8080
+      TORRENTING_PORT: 6881
     volumes:
       - ./config/qbittorrent:/config
+      - /mnt/downloads/:/downloads/
     ports:
       - 8080:8080
       - 6881:6881
@@ -35,10 +35,12 @@ services:
     image: lscr.io/linuxserver/jackett:latest
     container_name: jackett
     # environment:
-    #   - AUTO_UPDATE=true #optional
-    #   - RUN_OPTS= #optional
+    #   <<: *lscr-default-env
+    #   AUTO_UPDATE: "true" #optional
+    #   RUN_OPTS: "" #optional
     volumes:
       - ./config/jackett:/config
+      - /mnt/downloads/:/downloads/
     ports:
       - 9117:9117
 
@@ -47,8 +49,9 @@ services:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     volumes:
-      - ./config/radarr:/config
-      - /mnt/media/movies:/movies
+      - ./config/radarr/:/config/
+      - /mnt/downloads/:/downloads/
+      - /mnt/media/movies/:/movies/
     ports:
       - 7878:7878
 
@@ -57,9 +60,10 @@ services:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     volumes:
-      - ./config/sonarr:/config
-      - /mnt/media/tv:/tv
-      - /mnt/media/anime:/anime
+      - ./config/sonarr/:/config/
+      - /mnt/downloads/:/downloads/
+      - /mnt/media/tv/:/tv/
+      - /mnt/media/anime:/anime/
     ports:
       - 8989:8989
 
@@ -68,8 +72,9 @@ services:
     image: lscr.io/linuxserver/lidarr:latest
     container_name: lidarr
     volumes:
-      - ./config/lidarr:/config
-      - /mnt/media/music:/music
+      - ./config/lidarr/:/config/
+      - /mnt/downloads/:/downloads/
+      - /mnt/media/music/:/music/
     ports:
       - 8686:8686
 
@@ -78,10 +83,12 @@ services:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
     volumes:
-      - ./config/bazarr:/config
-      - /mnt/media/movies:/movies
-      - /mnt/media/tv:/tv
-      - /mnt/media/anime:/anime
+      - ./config/bazarr/:/config/
+      - /mnt/downloads/:/downloads/
+      # - /mnt/media/movies/:/movies/
+      # - /mnt/media/tv/:/tv/
+      # - /mnt/media/anime/:/anime/
+      - /mnt/media/:/mnt/media/
     ports:
       - 6767:6767
     depends_on:
@@ -98,12 +105,12 @@ services:
       - JELLYFIN_DATA_DIR=/var/lib/jellyfin
       - JELLYFIN_LOG_DIR=/var/log/jellyfin
     volumes:
+      - /mnt/media/:/mnt/media/
       - ./config/jellyfin/etc:/etc/jellyfin
       - ./config/jellyfin/var-cache:/var/cache/jellyfin
       - ./config/jellyfin/var-lib:/var/lib/jellyfin
       - ./config/jellyfin/var-log:/var/log/jellyfin
       - /etc/timezone:/etc/timezone:ro
-      - /mnt/media:/mnt/media/
     ports:
       - 8096:8096
     restart: unless-stopped
